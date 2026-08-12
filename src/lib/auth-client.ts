@@ -2,6 +2,9 @@
 
 import { createAuthClient } from "better-auth/client";
 
-export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
-});
+/**
+ * Sans `baseURL`, le client Better Auth utilise l'origine de la page courante.
+ * Les requêtes restent donc toujours same-origin (aucun problème de CORS),
+ * quel que soit le domaine utilisé en production.
+ */
+export const authClient = createAuthClient();

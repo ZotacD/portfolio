@@ -25,7 +25,10 @@ function createAuth() {
   return betterAuth({
       database: kyselyAdapter(db, { type: "postgres" }),
       baseURL: process.env.BETTER_AUTH_URL,
-      trustedOrigins: [process.env.BETTER_AUTH_URL].filter(Boolean) as string[],
+      trustedOrigins: [
+        process.env.BETTER_AUTH_URL,
+        process.env.NEXT_PUBLIC_SITE_URL,
+      ].filter(Boolean) as string[],
       emailAndPassword: {
         enabled: true,
         minPasswordLength: 8,
