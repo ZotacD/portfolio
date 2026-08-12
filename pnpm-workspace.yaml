@@ -1,0 +1,9 @@
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
+  esbuild: true
+  '@prisma/client': true
+  better-sqlite3: true
+minimumReleaseAgeExclude:
+  - '@better-auth/core@1.6.27'
+  - '@better-auth/kysely-adapter@1.6.27'
