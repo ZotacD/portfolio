@@ -5,6 +5,8 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
+import { Analytics } from "@vercel/analytics/next";
+
 const geistSans = Roboto({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -48,6 +50,7 @@ export default function RootLayout({
           {children}
           <Toaster richColors position="top-center" />
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
