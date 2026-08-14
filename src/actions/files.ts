@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireAdmin } from "@/lib/auth";
-import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { prisma } from "@/lib/db";
 import { removeFromStorage } from "@/lib/storage";
 import type { ActionState } from "./types";
 
@@ -15,24 +15,16 @@ export async function deleteProjectFile(
   if (!session) return { status: "error", message: "Session admin requise." };
   if (!id) return { status: "error", message: "Identifiant de fichier manquant." };
 
-  const supabase = getSupabaseAdmin();
-  if (!supabase)
-    return { status: "error", message: "Configuration Supabase manquante." };
+  const file = await prisma.projectFile.findUnique({
+    where: { id },
+    select: { storagePath: true },
+  });
 
-  const { data: file } = await supabase
-    .from("project_files")
-    .select("storage_path")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (file?.storage_path) {
-    await removeFromStorage([file.storage_path]);
+  if (file?.storagePath) {
+    await removeFromStorage([file.storagePath]);
   }
 
-  const { error } = await supabase.from("project_files").delete().eq("id", id);
-  if (error) {
-    return { status: "error", message: `Erreur lors de la suppression : ${error.message}` };
-  }
+  await prisma.projectFile.delete({ where: { id } });
 
   revalidatePath("/projets", "layout");
   revalidatePath(`/admin/projets/${projectId}`);
@@ -47,27 +39,16 @@ export async function deleteProjectImage(
   if (!session) return { status: "error", message: "Session admin requise." };
   if (!id) return { status: "error", message: "Identifiant d'image manquant." };
 
-  const supabase = getSupabaseAdmin();
-  if (!supabase)
-    return { status: "error", message: "Configuration Supabase manquante." };
+  const image = await prisma.projectImage.findUnique({
+    where: { id },
+    select: { storagePath: true },
+  });
 
-  const { data: image } = await supabase
-    .from("project_images")
-    .select("storage_path")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (image?.storage_path) {
-    await removeFromStorage([image.storage_path]);
+  if (image?.storagePath) {
+    await removeFromStorage([image.storagePath]);
   }
 
-  const { error } = await supabase.from("project_images").delete().eq("id", id);
-  if (error) {
-    return {
-      status: "error",
-      message: `Erreur lors de la suppression : ${error.message}`,
-    };
-  }
+  await prisma.projectImage.delete({ where: { id } });
 
   revalidatePath("/projets", "layout");
   revalidatePath(`/admin/projets/${projectId}`);

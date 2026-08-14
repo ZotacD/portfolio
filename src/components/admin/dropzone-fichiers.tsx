@@ -132,7 +132,7 @@ export function DropzoneFichiers({
                 <p className="truncate text-sm font-medium">{file.name}</p>
                 <p className="text-xs text-muted-foreground">
                   {file.size ? formatBytes(file.size) : "—"}
-                  {file.mime_type ? ` · ${file.mime_type}` : ""}
+                  {file.mimeType ? ` · ${file.mimeType}` : ""}
                 </p>
               </div>
               {file.url && (

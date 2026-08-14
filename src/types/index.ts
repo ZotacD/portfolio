@@ -6,24 +6,24 @@ export interface ProjectRow {
   title: string;
   excerpt: string | null;
   description: string | null;
-  cover_url: string | null;
-  link_url: string | null;
+  coverUrl: string | null;
+  linkUrl: string | null;
   tags: string[];
   status: ProjectStatus;
-  sort_order: number;
-  published_at: string | null;
-  created_at: string;
-  updated_at: string;
+  sortOrder: number;
+  publishedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface ProjectFileRow {
   id: string;
-  project_id: string;
+  projectId: string;
   name: string;
-  storage_path: string;
-  mime_type: string | null;
+  storagePath: string;
+  mimeType: string | null;
   size: number | null;
-  created_at: string;
+  createdAt: Date;
 }
 
 export interface ProjectFileWithUrl extends ProjectFileRow {
@@ -32,11 +32,11 @@ export interface ProjectFileWithUrl extends ProjectFileRow {
 
 export interface ProjectImageRow {
   id: string;
-  project_id: string;
-  storage_path: string;
+  projectId: string;
+  storagePath: string;
   alt: string | null;
-  sort_order: number;
-  created_at: string;
+  sortOrder: number;
+  createdAt: Date;
 }
 
 export interface ProjectImageWithUrl extends ProjectImageRow {
@@ -52,7 +52,7 @@ export interface ProfileRow {
   phone: string | null;
   location: string | null;
   social: Record<string, string>;
-  updated_at: string;
+  updatedAt: Date;
 }
 
 export interface ContactMessageRow {
@@ -62,7 +62,7 @@ export interface ContactMessageRow {
   subject: string | null;
   message: string;
   read: boolean;
-  created_at: string;
+  createdAt: Date;
 }
 
 export interface AdminStats {

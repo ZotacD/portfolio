@@ -48,7 +48,7 @@ interface FormProjetProps {
 export function FormProjet({ mode, project, images = [] }: FormProjetProps) {
   const router = useRouter();
   const [publishedDate, setPublishedDate] = useState<Date | undefined>(
-    project?.published_at ? new Date(project.published_at) : undefined
+    project?.publishedAt ?? undefined
   );
   const slugEdited = useRef(mode === "edit");
 
@@ -59,19 +59,19 @@ export function FormProjet({ mode, project, images = [] }: FormProjetProps) {
       slug: project?.slug ?? "",
       excerpt: project?.excerpt ?? "",
       description: project?.description ?? "",
-      cover_url: project?.cover_url ?? "",
-      link_url: project?.link_url ?? "",
+      coverUrl: project?.coverUrl ?? "",
+      linkUrl: project?.linkUrl ?? "",
       tags: project?.tags ?? [],
       status: project?.status ?? "draft",
-      sort_order: project?.sort_order ?? 0,
-      published_at: project?.published_at ?? null,
+      sortOrder: project?.sortOrder ?? 0,
+      publishedAt: null,
     },
   });
 
   async function onSubmit(values: ProjectInput) {
     const payload: ProjectInput = {
       ...values,
-      published_at: publishedDate ? publishedDate.toISOString() : null,
+      publishedAt: publishedDate ? publishedDate.toISOString() : null,
     };
 
     const result =
@@ -197,7 +197,7 @@ export function FormProjet({ mode, project, images = [] }: FormProjetProps) {
         <div className="grid items-start gap-6 lg:grid-cols-2">
         <FormField
           control={form.control}
-          name="link_url"
+          name="linkUrl"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Lien du projet</FormLabel>
@@ -245,7 +245,7 @@ export function FormProjet({ mode, project, images = [] }: FormProjetProps) {
 
           <FormField
             control={form.control}
-            name="sort_order"
+            name="sortOrder"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Ordre d'affichage</FormLabel>
@@ -338,7 +338,7 @@ export function FormProjet({ mode, project, images = [] }: FormProjetProps) {
 
         <FormField
           control={form.control}
-          name="cover_url"
+          name="coverUrl"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Image de couverture</FormLabel>

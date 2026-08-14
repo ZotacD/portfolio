@@ -63,7 +63,7 @@ export async function generateMetadata({
       title: project.title,
       description: project.excerpt ?? undefined,
       type: "article",
-      images: project.cover_url ? [{ url: project.cover_url }] : undefined,
+      images: project.coverUrl ? [{ url: project.coverUrl }] : undefined,
     },
   };
 }
@@ -106,10 +106,10 @@ export default async function ProjetPage({ params }: ProjetPageProps) {
           {project.title}
         </h1>
         <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-          {project.published_at && (
+          {project.publishedAt && (
             <span className="inline-flex items-center gap-1.5">
               <Calendar className="size-4" />
-              {formatDate(project.published_at)}
+              {formatDate(project.publishedAt)}
             </span>
           )}
           <div className="flex flex-wrap gap-1.5">
@@ -120,11 +120,11 @@ export default async function ProjetPage({ params }: ProjetPageProps) {
             ))}
           </div>
         </div>
-        {project.link_url && (
+        {project.linkUrl && (
           <div className="mt-6">
             <Button asChild>
               <a
-                href={project.link_url}
+                href={project.linkUrl}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -136,10 +136,10 @@ export default async function ProjetPage({ params }: ProjetPageProps) {
         )}
       </header>
 
-      {project.cover_url ? (
+      {project.coverUrl ? (
         <div className="relative mt-8 aspect-video w-full overflow-hidden rounded-xl bg-muted">
           <Image
-            src={project.cover_url}
+            src={project.coverUrl}
             alt={`Couverture du projet ${project.title}`}
             fill
             priority

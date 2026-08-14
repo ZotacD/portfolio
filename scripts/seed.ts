@@ -8,7 +8,7 @@
  */
 import dotenv from "dotenv";
 import { deflateSync } from "node:zlib";
-import { Pool } from "pg";
+import { PrismaClient } from "@prisma/client";
 
 dotenv.config({ path: ".env.local" });
 
@@ -109,8 +109,8 @@ interface SeedProject {
   description: string;
   tags: string[];
   status: "published" | "draft";
-  sort_order: number;
-  link_url: string | null;
+  sortOrder: number;
+  linkUrl: string | null;
   gallery: number;
   files: { name: string; content: string }[];
 }
@@ -146,8 +146,8 @@ pnpm dev
 `,
     tags: ["next.js", "tailwind", "supabase", "typescript"],
     status: "published",
-    sort_order: 1,
-    link_url: "https://github.com/example/portfolio",
+    sortOrder: 1,
+    linkUrl: "https://github.com/example/portfolio",
     gallery: 4,
     files: [
       {
@@ -180,8 +180,8 @@ Simplifier la gestion de projets en équipe avec un outil léger.
 `,
     tags: ["react", "typescript", "supabase"],
     status: "published",
-    sort_order: 2,
-    link_url: "https://demo-taches.example.com",
+    sortOrder: 2,
+    linkUrl: "https://demo-taches.example.com",
     gallery: 3,
     files: [],
   },
@@ -208,8 +208,8 @@ Refonte complète du site d'une boulangerie artisanale.
 `,
     tags: ["design", "next.js", "seo"],
     status: "published",
-    sort_order: 3,
-    link_url: null,
+    sortOrder: 3,
+    linkUrl: null,
     gallery: 3,
     files: [],
   },
@@ -236,8 +236,8 @@ Un dashboard d'analytics pour visualiser les données produit en temps réel.
 `,
     tags: ["react", "recharts", "supabase", "data"],
     status: "published",
-    sort_order: 4,
-    link_url: "https://github.com/example/dashboard-analytics",
+    sortOrder: 4,
+    linkUrl: "https://github.com/example/dashboard-analytics",
     gallery: 2,
     files: [
       {
@@ -269,8 +269,8 @@ Un bot Discord développé pour la communauté.
 `,
     tags: ["node.js", "typescript", "api"],
     status: "published",
-    sort_order: 5,
-    link_url: null,
+    sortOrder: 5,
+    linkUrl: null,
     gallery: 2,
     files: [],
   },
@@ -297,8 +297,8 @@ API de réservation pour un réseau de salles.
 `,
     tags: ["api", "node.js", "zod", "docker"],
     status: "draft",
-    sort_order: 6,
-    link_url: null,
+    sortOrder: 6,
+    linkUrl: null,
     gallery: 0,
     files: [],
   },
@@ -323,8 +323,8 @@ Créer une landing page qui convertit.
 `,
     tags: ["design", "next.js", "marketing"],
     status: "draft",
-    sort_order: 7,
-    link_url: null,
+    sortOrder: 7,
+    linkUrl: null,
     gallery: 0,
     files: [],
   },
@@ -336,8 +336,6 @@ async function main() {
   if (!email || !password) {
     throw new Error("ADMIN_EMAIL et ADMIN_PASSWORD requis dans .env.local.");
   }
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) throw new Error("DATABASE_URL requise dans .env.local.");
 
   // Session admin (pour les uploads)
   const signIn = await fetch(`${BASE}/api/auth/sign-in/email`, {
@@ -350,35 +348,44 @@ async function main() {
   }
   const cookie = getCookie(signIn);
 
-  const pool = new Pool({ connectionString: databaseUrl });
+  const prisma = new PrismaClient();
 
   // Nettoyage des données de démo existantes
-  await pool.query("delete from project_images");
-  await pool.query("delete from project_files");
-  await pool.query("delete from projects");
+  await prisma.projectImage.deleteMany();
+  await prisma.projectFile.deleteMany();
+  await prisma.project.deleteMany();
 
   // Profil
-  await pool.query(
-    `insert into profile (id, name, title, bio, email, phone, location, social, updated_at)
-     values (1, $1, $2, $3, $4, $5, $6, $7, now())
-     on conflict (id) do update set
-       name = excluded.name, title = excluded.title, bio = excluded.bio,
-       email = excluded.email, phone = excluded.phone, location = excluded.location,
-       social = excluded.social, updated_at = now()`,
-    [
-      "Thomas Delangle",
-      "Développeur Full-Stack",
-      "Je conçois des applications web modernes et performantes. Passionné par l'open source et le design soigné, j'accompagne des projets de l'idée à la mise en production.",
+  await prisma.profile.upsert({
+    where: { id: 1 },
+    create: {
+      id: 1,
+      name: "Thomas Delangle",
+      title: "Développeur Full-Stack",
+      bio: "Je conçois des applications web modernes et performantes. Passionné par l'open source et le design soigné, j'accompagne des projets de l'idée à la mise en production.",
       email,
-      "+33 6 12 34 56 78",
-      "Lyon, France",
-      JSON.stringify({
+      phone: "+33 6 12 34 56 78",
+      location: "Lyon, France",
+      social: {
         github: "https://github.com/example",
         linkedin: "https://linkedin.com/in/example",
         twitter: "https://x.com/example",
-      }),
-    ]
-  );
+      },
+    },
+    update: {
+      name: "Thomas Delangle",
+      title: "Développeur Full-Stack",
+      bio: "Je conçois des applications web modernes et performantes. Passionné par l'open source et le design soigné, j'accompagne des projets de l'idée à la mise en production.",
+      email,
+      phone: "+33 6 12 34 56 78",
+      location: "Lyon, France",
+      social: {
+        github: "https://github.com/example",
+        linkedin: "https://linkedin.com/in/example",
+        twitter: "https://x.com/example",
+      },
+    },
+  });
   console.log("✓ Profil rempli");
 
   let colorIndex = 0;
@@ -386,25 +393,22 @@ async function main() {
   let totalFiles = 0;
 
   for (const seed of SEED_PROJECTS) {
-    const publishedAt =
-      seed.status === "published" ? new Date().toISOString() : null;
+    const publishedAt = seed.status === "published" ? new Date() : null;
 
-    const { rows } = await pool.query(
-      `insert into projects (slug, title, excerpt, description, tags, status, sort_order, published_at, link_url)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning id`,
-      [
-        seed.slug,
-        seed.title,
-        seed.excerpt,
-        seed.description,
-        seed.tags,
-        seed.status,
-        seed.sort_order,
+    const project = await prisma.project.create({
+      data: {
+        slug: seed.slug,
+        title: seed.title,
+        excerpt: seed.excerpt,
+        description: seed.description,
+        tags: seed.tags,
+        status: seed.status,
+        sortOrder: seed.sortOrder,
         publishedAt,
-        seed.link_url,
-      ]
-    );
-    const projectId = rows[0].id as string;
+        linkUrl: seed.linkUrl,
+      },
+    });
+    const projectId = project.id;
 
     // Couverture
     const cover = makePng(800, 450, COLORS[colorIndex % COLORS.length]);
@@ -419,25 +423,23 @@ async function main() {
     );
     const coverUrl = coverResult.results?.find((r: { ok: boolean }) => r.ok)?.url;
     if (coverUrl) {
-      await pool.query("update projects set cover_url = $1 where id = $2", [
-        coverUrl,
-        projectId,
-      ]);
+      await prisma.project.update({
+        where: { id: projectId },
+        data: { coverUrl },
+      });
     }
 
     // Galerie
     const galleryCount = seed.gallery;
     if (galleryCount > 0) {
-      const names: string[] = [];
       for (let i = 0; i < galleryCount; i++) {
         const image = makePng(600, 600, COLORS[colorIndex % COLORS.length]);
         colorIndex += 1;
-        names.push(`photo-${seed.slug}-${i + 1}.png`);
         const res = await uploadFile(
           cookie,
           "gallery",
           projectId,
-          names[i],
+          `photo-${seed.slug}-${i + 1}.png`,
           image,
           "image/png"
         );
@@ -463,7 +465,7 @@ async function main() {
     );
   }
 
-  await pool.end();
+  await prisma.$disconnect();
   console.log(`\nTerminé : ${SEED_PROJECTS.length} projets, ${totalImages} photos, ${totalFiles} fichiers.`);
   console.log(`Ouvrez http://localhost:3000/projets et http://localhost:3000/login`);
 }

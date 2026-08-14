@@ -33,11 +33,11 @@ export default async function EditProjectPage({ params }: EditProjectPageProps) 
 
   const filesWithUrl = files.map((file) => ({
     ...file,
-    url: getPublicFileUrl(file.storage_path),
+    url: getPublicFileUrl(file.storagePath),
   }));
   const imagesWithUrl = images.map((image) => ({
     ...image,
-    url: getPublicFileUrl(image.storage_path),
+    url: getPublicFileUrl(image.storagePath),
   }));
 
   return (

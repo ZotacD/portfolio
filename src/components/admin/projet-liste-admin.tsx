@@ -183,8 +183,8 @@ export function ProjetListeAdmin({ projects }: { projects: ProjectRow[] }) {
                     </div>
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {project.published_at
-                      ? formatDate(project.published_at)
+                    {project.publishedAt
+                      ? formatDate(project.publishedAt)
                       : "—"}
                   </TableCell>
                   <TableCell className="max-w-[220px]">
@@ -201,7 +201,7 @@ export function ProjetListeAdmin({ projects }: { projects: ProjectRow[] }) {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="tabular-nums">{project.sort_order}</TableCell>
+                  <TableCell className="tabular-nums">{project.sortOrder}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

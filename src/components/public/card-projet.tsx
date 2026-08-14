@@ -17,9 +17,9 @@ export function CardProjet({ project }: { project: ProjectRow }) {
     <Link href={`/projets/${project.slug}`} className="group block h-full">
       <Card className="flex h-full flex-col overflow-hidden transition-shadow hover:shadow-md">
         <div className="relative aspect-video w-full overflow-hidden bg-muted">
-          {project.cover_url ? (
+          {project.coverUrl ? (
             <Image
-              src={project.cover_url}
+              src={project.coverUrl}
               alt={`Couverture du projet ${project.title}`}
               fill
               className="object-cover transition-transform duration-300 group-hover:scale-105"

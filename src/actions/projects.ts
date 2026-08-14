@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { projectSchema, type ProjectInput } from "@/lib/schema";
 import { requireAdmin } from "@/lib/auth";
-import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { prisma } from "@/lib/db";
 import { removeFromStorage } from "@/lib/storage";
 import { slugify } from "@/lib/utils";
 import type { ActionState } from "./types";
@@ -28,18 +28,33 @@ function normalize(input: ProjectInput): ProjectInput {
     slug: input.slug.trim() || slugify(input.title),
     excerpt: input.excerpt ? input.excerpt.trim() || null : null,
     description: input.description ? input.description.trim() || null : null,
-    cover_url: input.cover_url && input.cover_url !== "" ? input.cover_url : null,
-    link_url: input.link_url && input.link_url !== "" ? input.link_url : null,
+    coverUrl: input.coverUrl && input.coverUrl !== "" ? input.coverUrl : null,
+    linkUrl: input.linkUrl && input.linkUrl !== "" ? input.linkUrl : null,
   };
 }
 
-function normalizePublishedAt(input: ProjectInput): ProjectInput {
+/**
+ * Transforme la saisie validée en données Prisma.
+ */
+function buildData(input: ProjectInput) {
+  const publishedAt =
+    input.status === "published" && !input.publishedAt
+      ? new Date()
+      : input.publishedAt
+        ? new Date(input.publishedAt)
+        : null;
+
   return {
-    ...input,
-    published_at:
-      input.status === "published" && !input.published_at
-        ? new Date().toISOString()
-        : input.published_at,
+    slug: input.slug,
+    title: input.title,
+    excerpt: input.excerpt ?? null,
+    description: input.description ?? null,
+    coverUrl: input.coverUrl ?? null,
+    linkUrl: input.linkUrl ?? null,
+    tags: input.tags,
+    status: input.status,
+    sortOrder: input.sortOrder,
+    publishedAt,
   };
 }
 
@@ -50,15 +65,9 @@ export async function createProject(input: ProjectInput): Promise<ActionState> {
   const parsed = projectSchema.safeParse(normalize(input));
   if (!parsed.success) return errorState(parsed);
 
-  const supabase = getSupabaseAdmin();
-  if (!supabase)
-    return { status: "error", message: "Configuration Supabase manquante." };
-
-  const { data: existing } = await supabase
-    .from("projects")
-    .select("id")
-    .eq("slug", parsed.data.slug)
-    .maybeSingle();
+  const existing = await prisma.project.findUnique({
+    where: { slug: parsed.data.slug },
+  });
   if (existing) {
     return {
       status: "error",
@@ -67,12 +76,7 @@ export async function createProject(input: ProjectInput): Promise<ActionState> {
     };
   }
 
-  const { error } = await supabase
-    .from("projects")
-    .insert(normalizePublishedAt(parsed.data));
-  if (error) {
-    return { status: "error", message: `Erreur lors de la création : ${error.message}` };
-  }
+  await prisma.project.create({ data: buildData(parsed.data) });
 
   revalidatePath("/");
   revalidatePath("/projets");
@@ -91,17 +95,10 @@ export async function updateProject(
   const parsed = projectSchema.safeParse(normalize(input));
   if (!parsed.success) return errorState(parsed);
 
-  const supabase = getSupabaseAdmin();
-  if (!supabase)
-    return { status: "error", message: "Configuration Supabase manquante." };
-
-  const { data: existing } = await supabase
-    .from("projects")
-    .select("id")
-    .eq("slug", parsed.data.slug)
-    .neq("id", id)
-    .maybeSingle();
-  if (existing) {
+  const existing = await prisma.project.findUnique({
+    where: { slug: parsed.data.slug },
+  });
+  if (existing && existing.id !== id) {
     return {
       status: "error",
       message: "Ce slug est déjà utilisé par un autre projet.",
@@ -109,13 +106,10 @@ export async function updateProject(
     };
   }
 
-  const { error } = await supabase
-    .from("projects")
-    .update(normalizePublishedAt(parsed.data))
-    .eq("id", id);
-  if (error) {
-    return { status: "error", message: `Erreur lors de la mise à jour : ${error.message}` };
-  }
+  await prisma.project.update({
+    where: { id },
+    data: buildData(parsed.data),
+  });
 
   revalidatePath("/");
   revalidatePath("/projets", "layout");
@@ -128,17 +122,26 @@ export async function deleteProject(id: string): Promise<void> {
   if (!session) redirect("/login");
   if (!id) redirect("/admin/projets");
 
-  const supabase = getSupabaseAdmin();
-  if (supabase) {
-    const { data: files } = await supabase
-      .from("project_files")
-      .select("storage_path")
-      .eq("project_id", id);
-    if (files && files.length > 0) {
-      await removeFromStorage(files.map((file) => file.storage_path));
-    }
-    await supabase.from("projects").delete().eq("id", id);
+  const [files, images] = await Promise.all([
+    prisma.projectFile.findMany({
+      where: { projectId: id },
+      select: { storagePath: true },
+    }),
+    prisma.projectImage.findMany({
+      where: { projectId: id },
+      select: { storagePath: true },
+    }),
+  ]);
+
+  const paths = [
+    ...files.map((file) => file.storagePath),
+    ...images.map((image) => image.storagePath),
+  ];
+  if (paths.length > 0) {
+    await removeFromStorage(paths);
   }
+
+  await prisma.project.delete({ where: { id } });
 
   revalidatePath("/");
   revalidatePath("/projets", "layout");
@@ -156,29 +159,20 @@ export async function toggleProjectStatus(
   const session = await requireAdmin();
   if (!session) return { status: "error", message: "Session admin requise." };
 
-  const supabase = getSupabaseAdmin();
-  if (!supabase)
-    return { status: "error", message: "Configuration Supabase manquante." };
+  const current = await prisma.project.findUnique({
+    where: { id },
+    select: { publishedAt: true },
+  });
 
-  const { data: current } = await supabase
-    .from("projects")
-    .select("published_at")
-    .eq("id", id)
-    .maybeSingle();
-
-  const published_at =
+  const publishedAt =
     status === "published"
-      ? (current?.published_at ?? new Date().toISOString())
-      : (current?.published_at ?? null);
+      ? (current?.publishedAt ?? new Date())
+      : (current?.publishedAt ?? null);
 
-  const { error } = await supabase
-    .from("projects")
-    .update({ status, published_at })
-    .eq("id", id);
-
-  if (error) {
-    return { status: "error", message: `Erreur lors de la mise à jour : ${error.message}` };
-  }
+  await prisma.project.update({
+    where: { id },
+    data: { status, publishedAt },
+  });
 
   revalidatePath("/");
   revalidatePath("/projets", "layout");

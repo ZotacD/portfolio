@@ -30,13 +30,13 @@ export const projectSchema = z.object({
     ),
   excerpt: optionalText(500, "L'extrait ne doit pas dépasser 500 caractères"),
   description: optionalText(100000, "La description est trop longue"),
-  cover_url: z.union([
+  coverUrl: z.union([
     z.url("URL de couverture invalide"),
     z.literal(""),
     z.null(),
     z.undefined(),
   ]),
-  link_url: z.union([
+  linkUrl: z.union([
     z.url("URL du lien invalide"),
     z.literal(""),
     z.null(),
@@ -46,15 +46,15 @@ export const projectSchema = z.object({
     .array(z.string().trim().min(1, "Un tag ne peut pas être vide").max(30, "Tag trop long"))
     .max(20, "Maximum 20 tags"),
   status: z.enum(["draft", "published"]),
-  sort_order: z.number().int("L'ordre d'affichage doit être un entier"),
-  published_at: z.string().datetime({ offset: true }).nullable(),
+  sortOrder: z.number().int("L'ordre d'affichage doit être un entier"),
+  publishedAt: z.string().datetime({ offset: true }).nullable(),
 });
 
 export const projectFileSchema = z.object({
   projectId: z.string().uuid("Identifiant de projet invalide"),
   name: z.string().trim().min(1, "Le nom du fichier est requis").max(255),
-  storage_path: z.string().trim().min(1, "Le chemin de stockage est requis"),
-  mime_type: z.string().trim().max(120).optional().nullable(),
+  storagePath: z.string().trim().min(1, "Le chemin de stockage est requis"),
+  mimeType: z.string().trim().max(120).optional().nullable(),
   size: z.number().int().nonnegative().optional().nullable(),
 });
 

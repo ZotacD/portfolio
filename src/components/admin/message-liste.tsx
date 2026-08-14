@@ -140,7 +140,7 @@ export function MessageListe({
                     </p>
                   </div>
                   <span className="shrink-0 text-xs text-muted-foreground">
-                    {formatDate(message.created_at)}
+                    {formatDate(message.createdAt)}
                   </span>
                 </div>
                 <p className="truncate text-xs text-muted-foreground">
@@ -166,7 +166,7 @@ export function MessageListe({
             <DialogTitle>{selected?.subject || "Sans objet"}</DialogTitle>
             <DialogDescription>
               {selected?.name} · {selected?.email} ·{" "}
-              {selected && formatDate(selected.created_at)}
+              {selected && formatDate(selected.createdAt)}
             </DialogDescription>
           </DialogHeader>
 

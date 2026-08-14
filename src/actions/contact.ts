@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { contactSchema, type ContactInput } from "@/lib/schema";
 import { requireAdmin } from "@/lib/auth";
-import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { prisma } from "@/lib/db";
 import type { ActionState } from "./types";
 
 /**
@@ -22,26 +22,14 @@ export async function sendContactMessage(input: ContactInput): Promise<ActionSta
     };
   }
 
-  const supabase = getSupabaseAdmin();
-  if (!supabase) {
-    return {
-      status: "error",
-      message: "Une erreur est survenue lors de l'envoi. Réessayez plus tard.",
-    };
-  }
-
-  const { error } = await supabase.from("contact_messages").insert({
-    name: parsed.data.name,
-    email: parsed.data.email,
-    subject: parsed.data.subject || null,
-    message: parsed.data.message,
+  await prisma.contactMessage.create({
+    data: {
+      name: parsed.data.name,
+      email: parsed.data.email,
+      subject: parsed.data.subject || null,
+      message: parsed.data.message,
+    },
   });
-  if (error) {
-    return {
-      status: "error",
-      message: "Une erreur est survenue lors de l'envoi. Réessayez plus tard.",
-    };
-  }
 
   const webhookUrl = process.env.CONTACT_WEBHOOK_URL;
   if (webhookUrl) {
@@ -85,23 +73,16 @@ export async function toggleMessageRead(
   if (!session) return { status: "error", message: "Session admin requise." };
   if (!id) return { status: "error", message: "Identifiant de message manquant." };
 
-  const supabase = getSupabaseAdmin();
-  if (!supabase)
-    return { status: "error", message: "Configuration Supabase manquante." };
-
-  const { error } = await supabase
-    .from("contact_messages")
-    .update({ read })
-    .eq("id", id);
-  if (error) {
-    return {
-      status: "error",
-      message: `Erreur lors de la mise à jour : ${error.message}`,
-    };
-  }
+  await prisma.contactMessage.update({
+    where: { id },
+    data: { read },
+  });
 
   revalidatePath("/admin/messages");
-  return { status: "success", message: read ? "Message marqué comme lu." : "Message marqué comme non lu." };
+  return {
+    status: "success",
+    message: read ? "Message marqué comme lu." : "Message marqué comme non lu.",
+  };
 }
 
 /**
@@ -111,20 +92,10 @@ export async function markAllMessagesRead(): Promise<ActionState> {
   const session = await requireAdmin();
   if (!session) return { status: "error", message: "Session admin requise." };
 
-  const supabase = getSupabaseAdmin();
-  if (!supabase)
-    return { status: "error", message: "Configuration Supabase manquante." };
-
-  const { error } = await supabase
-    .from("contact_messages")
-    .update({ read: true })
-    .eq("read", false);
-  if (error) {
-    return {
-      status: "error",
-      message: `Erreur lors de la mise à jour : ${error.message}`,
-    };
-  }
+  await prisma.contactMessage.updateMany({
+    where: { read: false },
+    data: { read: true },
+  });
 
   revalidatePath("/admin/messages");
   return { status: "success", message: "Tous les messages sont marqués comme lus." };
@@ -138,20 +109,7 @@ export async function deleteContactMessage(id: string): Promise<ActionState> {
   if (!session) return { status: "error", message: "Session admin requise." };
   if (!id) return { status: "error", message: "Identifiant de message manquant." };
 
-  const supabase = getSupabaseAdmin();
-  if (!supabase)
-    return { status: "error", message: "Configuration Supabase manquante." };
-
-  const { error } = await supabase
-    .from("contact_messages")
-    .delete()
-    .eq("id", id);
-  if (error) {
-    return {
-      status: "error",
-      message: `Erreur lors de la suppression : ${error.message}`,
-    };
-  }
+  await prisma.contactMessage.delete({ where: { id } });
 
   revalidatePath("/admin/messages");
   return { status: "success", message: "Message supprimé." };

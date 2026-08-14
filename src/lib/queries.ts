@@ -1,6 +1,7 @@
 import "server-only";
 
-import { getPublicFileUrl, getSupabaseServer } from "./supabase-server";
+import { prisma } from "./db";
+import { getPublicFileUrl } from "./supabase-server";
 import type {
   ProjectFileWithUrl,
   ProjectImageWithUrl,
@@ -10,19 +11,15 @@ import type {
 
 /**
  * Récupère la ligne profil (ligne unique id = 1).
- * Renvoie `null` si non configuré ou indisponible.
  */
 export async function getProfile(): Promise<ProfileRow | null> {
-  const supabase = getSupabaseServer();
-  if (!supabase) return null;
   try {
-    const { data, error } = await supabase
-      .from("profile")
-      .select("*")
-      .eq("id", 1)
-      .maybeSingle();
-    if (error || !data) return null;
-    return data as ProfileRow;
+    const profile = await prisma.profile.findUnique({ where: { id: 1 } });
+    if (!profile) return null;
+    return {
+      ...profile,
+      social: (profile.social as Record<string, string> | null) ?? {},
+    };
   } catch {
     return null;
   }
@@ -34,19 +31,13 @@ export async function getProfile(): Promise<ProfileRow | null> {
 export async function getPublishedProjects(
   options: { limit?: number } = {}
 ): Promise<ProjectRow[]> {
-  const supabase = getSupabaseServer();
-  if (!supabase) return [];
   try {
-    let query = supabase
-      .from("projects")
-      .select("*")
-      .eq("status", "published")
-      .order("sort_order", { ascending: true })
-      .order("published_at", { ascending: false });
-    if (options.limit) query = query.limit(options.limit);
-    const { data, error } = await query;
-    if (error || !data) return [];
-    return (data as ProjectRow[]).map(normalizeProject);
+    const projects = await prisma.project.findMany({
+      where: { status: "published" },
+      orderBy: [{ sortOrder: "asc" }, { publishedAt: "desc" }],
+      take: options.limit,
+    });
+    return projects as ProjectRow[];
   } catch {
     return [];
   }
@@ -65,32 +56,25 @@ export async function getLatestProjects(limit = 3): Promise<ProjectRow[]> {
 export async function getPublishedProject(
   slug: string
 ): Promise<{ project: ProjectRow; files: ProjectFileWithUrl[] } | null> {
-  const supabase = getSupabaseServer();
-  if (!supabase) return null;
   try {
-    const { data, error } = await supabase
-      .from("projects")
-      .select("*")
-      .eq("slug", slug)
-      .eq("status", "published")
-      .maybeSingle();
-    if (error || !data) return null;
-    const project = normalizeProject(data as ProjectRow);
+    const project = await prisma.project.findFirst({
+      where: { slug, status: "published" },
+    });
+    if (!project) return null;
 
-    const { data: fileRows, error: fileError } = await supabase
-      .from("project_files")
-      .select("*")
-      .eq("project_id", project.id)
-      .order("created_at", { ascending: true });
-    if (fileError) return { project, files: [] };
+    const files = await prisma.projectFile.findMany({
+      where: { projectId: project.id },
+      orderBy: { createdAt: "asc" },
+    });
 
-    const files: ProjectFileWithUrl[] = ((fileRows as ProjectFileWithUrl[]) ?? []).map(
-      (file) => ({
+    return {
+      project: project as ProjectRow,
+      files: files.map((file) => ({
         ...file,
-        url: getPublicFileUrl(file.storage_path),
-      })
-    );
-    return { project, files };
+        size: file.size == null ? null : Number(file.size),
+        url: getPublicFileUrl(file.storagePath),
+      })),
+    };
   } catch {
     return null;
   }
@@ -102,18 +86,15 @@ export async function getPublishedProject(
 export async function getProjectFiles(
   projectId: string
 ): Promise<ProjectFileWithUrl[]> {
-  const supabase = getSupabaseServer();
-  if (!supabase) return [];
   try {
-    const { data, error } = await supabase
-      .from("project_files")
-      .select("*")
-      .eq("project_id", projectId)
-      .order("created_at", { ascending: true });
-    if (error || !data) return [];
-    return (data as ProjectFileWithUrl[]).map((file) => ({
+    const files = await prisma.projectFile.findMany({
+      where: { projectId },
+      orderBy: { createdAt: "asc" },
+    });
+    return files.map((file) => ({
       ...file,
-      url: getPublicFileUrl(file.storage_path),
+      size: file.size == null ? null : Number(file.size),
+      url: getPublicFileUrl(file.storagePath),
     }));
   } catch {
     return [];
@@ -126,19 +107,14 @@ export async function getProjectFiles(
 export async function getProjectImages(
   projectId: string
 ): Promise<ProjectImageWithUrl[]> {
-  const supabase = getSupabaseServer();
-  if (!supabase) return [];
   try {
-    const { data, error } = await supabase
-      .from("project_images")
-      .select("*")
-      .eq("project_id", projectId)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: true });
-    if (error || !data) return [];
-    return (data as ProjectImageWithUrl[]).map((image) => ({
+    const images = await prisma.projectImage.findMany({
+      where: { projectId },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+    });
+    return images.map((image) => ({
       ...image,
-      url: getPublicFileUrl(image.storage_path),
+      url: getPublicFileUrl(image.storagePath),
     }));
   } catch {
     return [];
@@ -148,7 +124,8 @@ export async function getProjectImages(
 /**
  * Projets précédent / suivant (par ordre d'affichage), pour la navigation.
  */
-export async function getAdjacentProjects(  slug: string
+export async function getAdjacentProjects(
+  slug: string
 ): Promise<{ prev: ProjectRow | null; next: ProjectRow | null }> {
   const all = await getPublishedProjects();
   const index = all.findIndex((project) => project.slug === slug);
@@ -163,15 +140,12 @@ export async function getAdjacentProjects(  slug: string
  * Slugs de tous les projets publiés (generateStaticParams, sitemap).
  */
 export async function getAllPublishedSlugs(): Promise<string[]> {
-  const supabase = getSupabaseServer();
-  if (!supabase) return [];
   try {
-    const { data, error } = await supabase
-      .from("projects")
-      .select("slug")
-      .eq("status", "published");
-    if (error || !data) return [];
-    return data.map((row) => row.slug);
+    const projects = await prisma.project.findMany({
+      where: { status: "published" },
+      select: { slug: true },
+    });
+    return projects.map((project) => project.slug);
   } catch {
     return [];
   }
@@ -181,29 +155,17 @@ export async function getAllPublishedSlugs(): Promise<string[]> {
  * Tags distincts des projets publiés (filtres).
  */
 export async function getDistinctTags(): Promise<string[]> {
-  const supabase = getSupabaseServer();
-  if (!supabase) return [];
   try {
-    const { data, error } = await supabase
-      .from("projects")
-      .select("tags")
-      .eq("status", "published");
-    if (error || !data) return [];
+    const projects = await prisma.project.findMany({
+      where: { status: "published" },
+      select: { tags: true },
+    });
     const set = new Set<string>();
-    for (const row of data) {
-      const tags = (row.tags as string[] | null) ?? [];
-      for (const tag of tags) set.add(tag);
+    for (const project of projects) {
+      for (const tag of project.tags) set.add(tag);
     }
     return [...set].sort((a, b) => a.localeCompare(b, "fr"));
   } catch {
     return [];
   }
-}
-
-function normalizeProject(project: ProjectRow): ProjectRow {
-  return {
-    ...project,
-    tags: Array.isArray(project.tags) ? project.tags : [],
-    status: project.status === "published" ? "published" : "draft",
-  };
 }

@@ -3,7 +3,7 @@ export interface UploadResultItem {
   name?: string;
   error?: string;
   url?: string | null;
-  storage_path?: string;
+  storagePath?: string;
   file?: unknown;
 }
 

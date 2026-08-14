@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getAuth } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getPublicFileUrl } from "@/lib/supabase-server";
 import { uploadToStorage } from "@/lib/storage";
@@ -14,10 +15,11 @@ export const runtime = "nodejs";
 
 /**
  * Upload de fichiers (pièces jointes, galerie ou image de couverture d'un
- * projet). Protégé par la session admin ; utilise la clé service_role.
+ * projet). Protégé par la session admin ; Storage via la clé service_role,
+ * base de données via Prisma.
  * - purpose "files"   -> table project_files
  * - purpose "gallery" -> table project_images
- * - purpose "covers"  -> renvoie l'URL (stockée dans projects.cover_url)
+ * - purpose "covers"  -> renvoie l'URL (stockée dans projects.coverUrl)
  */
 export async function POST(request: Request) {
   const auth = await getAuth();
@@ -57,11 +59,10 @@ export async function POST(request: Request) {
   }
 
   if (purpose !== "covers") {
-    const { data: project } = await supabase
-      .from("projects")
-      .select("id")
-      .eq("id", projectId)
-      .maybeSingle();
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { id: true },
+    });
     if (!project) {
       return NextResponse.json({ error: "Projet introuvable." }, { status: 400 });
     }
@@ -72,14 +73,13 @@ export async function POST(request: Request) {
     ? ALLOWED_IMAGE_MIME_TYPES
     : ALLOWED_MIME_TYPES;
   const folder = purpose === "files" ? "files" : purpose === "gallery" ? "images" : "covers";
-  const table = purpose === "files" ? "project_files" : "project_images";
 
   const results: Array<{
     ok: boolean;
     name?: string;
     error?: string;
     url?: string | null;
-    storage_path?: string;
+    storagePath?: string;
     file?: unknown;
   }> = [];
 
@@ -125,40 +125,28 @@ export async function POST(request: Request) {
         ok: true,
         name: file.name,
         url: getPublicFileUrl(storagePath),
-        storage_path: storagePath,
+        storagePath,
       });
       continue;
     }
 
-    const { data, error } = await supabase
-      .from(table)
-      .insert(
-        purpose === "files"
-          ? {
-              project_id: projectId,
-              name: file.name,
-              storage_path: storagePath,
-              mime_type: mimeType || null,
-              size: file.size,
-            }
-          : {
-              project_id: projectId,
-              storage_path: storagePath,
-            }
-      )
-      .select()
-      .single();
-
-    if (error) {
-      results.push({
-        ok: false,
-        name: file.name,
-        error: "Échec de l'enregistrement en base.",
+    if (purpose === "files") {
+      const created = await prisma.projectFile.create({
+        data: {
+          projectId,
+          name: file.name,
+          storagePath,
+          mimeType: mimeType || null,
+          size: file.size,
+        },
       });
-      continue;
+      results.push({ ok: true, name: file.name, file: created });
+    } else {
+      const created = await prisma.projectImage.create({
+        data: { projectId, storagePath },
+      });
+      results.push({ ok: true, name: file.name, file: created });
     }
-
-    results.push({ ok: true, name: file.name, file: data });
   }
 
   return NextResponse.json({ results });

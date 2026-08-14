@@ -4,6 +4,8 @@ allowBuilds:
   esbuild: true
   '@prisma/client': true
   better-sqlite3: true
+  '@prisma/engines': true
+  prisma: true
 minimumReleaseAgeExclude:
   - '@better-auth/core@1.6.27'
   - '@better-auth/kysely-adapter@1.6.27'

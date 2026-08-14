@@ -13,7 +13,7 @@ import type { ProjectImageWithUrl } from "@/types";
 
 interface ImagePickerProps {
   /**
-   * "covers" : une seule image, valeur contrôlée (cover_url).
+   * "covers" : une seule image, valeur contrôlée (coverUrl).
    * "gallery" : plusieurs images, listées et gérées côté serveur.
    */
   purpose: "covers" | "gallery";
