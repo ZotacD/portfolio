@@ -7,18 +7,26 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:status": "supabase status",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
-    "db:migrate:deploy": "prisma migrate deploy",
-    "db:migrate:status": "prisma migrate status",
+
+    "db:migrate:local": "dotenv -e .env.local -- prisma migrate deploy",
+    "db:migrate:prod": "dotenv -e .env.prod -- prisma migrate deploy",
+
+    "db:migrate:status:local": "dotenv -e .env.local -- prisma migrate status",
+    "db:migrate:status:prod": "dotenv -e .env.prod -- prisma migrate status",
+    
     "db:studio": "prisma studio",
-    "db:reset": "supabase db reset --local && prisma migrate deploy",
-    "db:admin": "tsx scripts/create-admin.ts -- .env.local",
+    
+    "db:reset:local": "supabase db reset --local && dotenv -e .env.local -- prisma migrate deploy",
+    "db:reset:prod": "supabase db reset --linked && dotenv -e .env.prod -- prisma migrate deploy",
+
     "db:admin:dev": "tsx scripts/create-admin.ts -- .env.local",
     "db:admin:prod": "tsx scripts/create-admin.ts -- .env.prod",
+
     "db:seed:demo": "tsx scripts/seed.ts"
   },
   "dependencies": {
@@ -59,6 +67,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dotenv": "^17.4.2",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9",
     "eslint-config-next": "15.5.23",
     "prisma": "^6.19.3",
