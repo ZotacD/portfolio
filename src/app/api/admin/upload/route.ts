@@ -140,7 +140,14 @@ export async function POST(request: Request) {
           size: file.size,
         },
       });
-      results.push({ ok: true, name: file.name, file: created });
+      results.push({
+        ok: true,
+        name: file.name,
+        file: {
+          ...created,
+          size: created.size == null ? null : Number(created.size),
+        },
+      });
     } else {
       const created = await prisma.projectImage.create({
         data: { projectId, storagePath },

@@ -1,6 +1,4 @@
--- Seed exécuté après les migrations lors de `supabase db reset`.
-
--- Ligne profil unique (id = 1) utilisée par le site public.
-insert into public.profile (id)
-values (1)
-on conflict (id) do nothing;
+-- Seed exécuté après les migrations Supabase lors de `supabase db reset`.
+-- Le schéma des tables est géré par Prisma (appliqué juste après via
+-- `prisma migrate deploy`) ; le seed SQL Supabase est donc volontairement vide.
+-- Les données de démonstration se chargent avec `pnpm db:seed:demo`.
