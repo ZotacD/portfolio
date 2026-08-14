@@ -7,6 +7,7 @@ import {
   EyeOff,
   FileText,
   FolderGit2,
+  Mail,
   Plus,
   Settings,
 } from "lucide-react";
@@ -16,6 +17,7 @@ import {
   getAdminStats,
   getCoverCount,
   getTagsBreakdown,
+  getUnreadContactMessagesCount,
 } from "@/lib/queries-admin";
 import { ChartRepartition } from "@/components/admin/chart-repartition";
 import { Button } from "@/components/ui/button";
@@ -35,11 +37,12 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminHomePage() {
-  const [stats, tags, coverCount, profile] = await Promise.all([
+  const [stats, tags, coverCount, profile, unreadCount] = await Promise.all([
     getAdminStats(),
     getTagsBreakdown(8),
     getCoverCount(),
     getAdminProfile(),
+    getUnreadContactMessagesCount(),
   ]);
 
   const cards = [
@@ -266,6 +269,17 @@ export default async function AdminHomePage() {
               <Link href="/admin/projets/nouveau">
                 <Plus />
                 Créer un projet
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="justify-start">
+              <Link href="/admin/messages">
+                <Mail />
+                Messages
+                {unreadCount > 0 && (
+                  <Badge variant="secondary" className="ml-auto">
+                    {unreadCount}
+                  </Badge>
+                )}
               </Link>
             </Button>
             <Button asChild variant="outline" className="justify-start">

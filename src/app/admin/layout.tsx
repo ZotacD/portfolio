@@ -1,7 +1,11 @@
 import { redirect } from "next/navigation";
 
 import { requireAdmin } from "@/lib/auth";
-import { getProjectSearchData, getAdminStats } from "@/lib/queries-admin";
+import {
+  getProjectSearchData,
+  getAdminStats,
+  getUnreadContactMessagesCount,
+} from "@/lib/queries-admin";
 import { SidebarAdmin } from "@/components/admin/sidebar";
 import { AdminBreadcrumb } from "@/components/admin/admin-breadcrumb";
 import { CommandMenu } from "@/components/admin/command-menu";
@@ -21,15 +25,20 @@ export default async function AdminLayout({
   const session = await requireAdmin();
   if (!session) redirect("/login");
 
-  const [stats, projects] = await Promise.all([
+  const [stats, projects, unreadCount] = await Promise.all([
     getAdminStats(),
     getProjectSearchData(),
+    getUnreadContactMessagesCount(),
   ]);
 
   return (
     <TooltipProvider>
       <SidebarProvider>
-        <SidebarAdmin user={session.user} draftCount={stats.drafts} />
+        <SidebarAdmin
+          user={session.user}
+          draftCount={stats.drafts}
+          unreadCount={unreadCount}
+        />
         <SidebarInset>
           <header className="flex h-16 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
             <div className="flex items-center gap-2 px-4">

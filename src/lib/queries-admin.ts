@@ -3,6 +3,7 @@ import "server-only";
 import { getSupabaseAdmin } from "./supabase-admin";
 import type {
   AdminStats,
+  ContactMessageRow,
   ProjectFileRow,
   ProjectImageRow,
   ProjectRow,
@@ -218,5 +219,40 @@ export async function getAdminProjectImages(
     return data as ProjectImageRow[];
   } catch {
     return [];
+  }
+}
+
+/**
+ * Messages de contact, du plus r�cent au plus ancien.
+ */
+export async function getContactMessages(): Promise<ContactMessageRow[]> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return [];
+  try {
+    const { data, error } = await supabase
+      .from("contact_messages")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error || !data) return [];
+    return data as ContactMessageRow[];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Nombre de messages de contact non lus.
+ */
+export async function getUnreadContactMessagesCount(): Promise<number> {
+  const supabase = getSupabaseAdmin();
+  if (!supabase) return 0;
+  try {
+    const { count } = await supabase
+      .from("contact_messages")
+      .select("*", { count: "exact", head: true })
+      .eq("read", false);
+    return count ?? 0;
+  } catch {
+    return 0;
   }
 }

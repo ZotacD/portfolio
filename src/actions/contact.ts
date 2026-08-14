@@ -1,12 +1,16 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+
 import { contactSchema, type ContactInput } from "@/lib/schema";
+import { requireAdmin } from "@/lib/auth";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import type { ActionState } from "./types";
 
 /**
- * Envoi du formulaire de contact.
- * Si `CONTACT_WEBHOOK_URL` est défini, le message est transmis au endpoint
- * (ex : webhook email). Sinon, la demande est simplement validée.
+ * Envoi du formulaire de contact (page publique). Le message est stocké en
+ * base pour être géré depuis le dashboard. Un webhook optionnel
+ * (`CONTACT_WEBHOOK_URL`) peut notifier un service externe.
  */
 export async function sendContactMessage(input: ContactInput): Promise<ActionState> {
   const parsed = contactSchema.safeParse(input);
@@ -15,6 +19,27 @@ export async function sendContactMessage(input: ContactInput): Promise<ActionSta
       status: "error",
       message: "Le formulaire contient des erreurs.",
       fieldErrors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  const supabase = getSupabaseAdmin();
+  if (!supabase) {
+    return {
+      status: "error",
+      message: "Une erreur est survenue lors de l'envoi. Réessayez plus tard.",
+    };
+  }
+
+  const { error } = await supabase.from("contact_messages").insert({
+    name: parsed.data.name,
+    email: parsed.data.email,
+    subject: parsed.data.subject || null,
+    message: parsed.data.message,
+  });
+  if (error) {
+    return {
+      status: "error",
+      message: "Une erreur est survenue lors de l'envoi. Réessayez plus tard.",
     };
   }
 
@@ -47,4 +72,87 @@ export async function sendContactMessage(input: ContactInput): Promise<ActionSta
     status: "success",
     message: "Votre message a bien été envoyé. Merci !",
   };
+}
+
+/**
+ * Marque un message comme lu ou non lu (dashboard).
+ */
+export async function toggleMessageRead(
+  id: string,
+  read: boolean
+): Promise<ActionState> {
+  const session = await requireAdmin();
+  if (!session) return { status: "error", message: "Session admin requise." };
+  if (!id) return { status: "error", message: "Identifiant de message manquant." };
+
+  const supabase = getSupabaseAdmin();
+  if (!supabase)
+    return { status: "error", message: "Configuration Supabase manquante." };
+
+  const { error } = await supabase
+    .from("contact_messages")
+    .update({ read })
+    .eq("id", id);
+  if (error) {
+    return {
+      status: "error",
+      message: `Erreur lors de la mise à jour : ${error.message}`,
+    };
+  }
+
+  revalidatePath("/admin/messages");
+  return { status: "success", message: read ? "Message marqué comme lu." : "Message marqué comme non lu." };
+}
+
+/**
+ * Marque tous les messages comme lus (dashboard).
+ */
+export async function markAllMessagesRead(): Promise<ActionState> {
+  const session = await requireAdmin();
+  if (!session) return { status: "error", message: "Session admin requise." };
+
+  const supabase = getSupabaseAdmin();
+  if (!supabase)
+    return { status: "error", message: "Configuration Supabase manquante." };
+
+  const { error } = await supabase
+    .from("contact_messages")
+    .update({ read: true })
+    .eq("read", false);
+  if (error) {
+    return {
+      status: "error",
+      message: `Erreur lors de la mise à jour : ${error.message}`,
+    };
+  }
+
+  revalidatePath("/admin/messages");
+  return { status: "success", message: "Tous les messages sont marqués comme lus." };
+}
+
+/**
+ * Supprime un message de contact (dashboard).
+ */
+export async function deleteContactMessage(id: string): Promise<ActionState> {
+  const session = await requireAdmin();
+  if (!session) return { status: "error", message: "Session admin requise." };
+  if (!id) return { status: "error", message: "Identifiant de message manquant." };
+
+  const supabase = getSupabaseAdmin();
+  if (!supabase)
+    return { status: "error", message: "Configuration Supabase manquante." };
+
+  const { error } = await supabase
+    .from("contact_messages")
+    .delete()
+    .eq("id", id);
+  if (error) {
+    return {
+      status: "error",
+      message: `Erreur lors de la suppression : ${error.message}`,
+    };
+  }
+
+  revalidatePath("/admin/messages");
+  return { status: "success", message: "Message supprimé." };
 }

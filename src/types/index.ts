@@ -55,6 +55,16 @@ export interface ProfileRow {
   updated_at: string;
 }
 
+export interface ContactMessageRow {
+  id: string;
+  name: string;
+  email: string;
+  subject: string | null;
+  message: string;
+  read: boolean;
+  created_at: string;
+}
+
 export interface AdminStats {
   total: number;
   published: number;

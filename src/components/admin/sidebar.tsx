@@ -8,6 +8,7 @@ import {
   FolderGit2,
   LayoutDashboard,
   LogOut,
+  Mail,
   Plus,
   Settings,
   Shield,
@@ -40,6 +41,7 @@ import { authClient } from "@/lib/auth-client";
 
 const NAV_ITEMS = [
   { href: "/admin/projets", label: "Projets", icon: FolderGit2 },
+  { href: "/admin/messages", label: "Messages", icon: Mail },
   { href: "/admin/parametres", label: "Paramètres", icon: Settings },
 ];
 
@@ -59,9 +61,11 @@ function initials(name: string | null | undefined): string {
 export function SidebarAdmin({
   user,
   draftCount,
+  unreadCount,
 }: {
   user: User;
   draftCount: number;
+  unreadCount: number;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -145,6 +149,9 @@ export function SidebarAdmin({
                     </SidebarMenuButton>
                     {item.href === "/admin/projets" && draftCount > 0 && (
                       <SidebarMenuBadge>{draftCount}</SidebarMenuBadge>
+                    )}
+                    {item.href === "/admin/messages" && unreadCount > 0 && (
+                      <SidebarMenuBadge>{unreadCount}</SidebarMenuBadge>
                     )}
                   </SidebarMenuItem>
                 );
