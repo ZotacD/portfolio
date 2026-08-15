@@ -45,7 +45,7 @@ export default async function AdminLayout({
               <SidebarTrigger className="-ml-1" />
               <Separator
                 orientation="vertical"
-                className="mr-2 h-4 self-center"
+                className="mr-2 self-center"
               />
               <AdminBreadcrumb />
             </div>
