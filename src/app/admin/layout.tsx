@@ -2,13 +2,11 @@ import { redirect } from "next/navigation";
 
 import { requireAdmin } from "@/lib/auth";
 import {
-  getProjectSearchData,
   getAdminStats,
   getUnreadContactMessagesCount,
 } from "@/lib/queries-admin";
 import { SidebarAdmin } from "@/components/admin/sidebar";
 import { AdminBreadcrumb } from "@/components/admin/admin-breadcrumb";
-import { CommandMenu } from "@/components/admin/command-menu";
 import {
   SidebarInset,
   SidebarProvider,
@@ -25,9 +23,8 @@ export default async function AdminLayout({
   const session = await requireAdmin();
   if (!session) redirect("/login");
 
-  const [stats, projects, unreadCount] = await Promise.all([
+  const [stats, unreadCount] = await Promise.all([
     getAdminStats(),
-    getProjectSearchData(),
     getUnreadContactMessagesCount(),
   ]);
 
@@ -48,9 +45,6 @@ export default async function AdminLayout({
                 className="mr-2 self-center"
               />
               <AdminBreadcrumb />
-            </div>
-            <div className="ml-auto flex items-center gap-2 px-4">
-              <CommandMenu projects={projects} />
             </div>
           </header>
           <main className="flex flex-1 flex-col gap-4 p-6">

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 import { prisma } from "./db";
 import { getPublicFileUrl } from "./supabase-server";
 import type {
@@ -12,36 +14,28 @@ import type {
 /**
  * Récupère la ligne profil (ligne unique id = 1).
  */
-export async function getProfile(): Promise<ProfileRow | null> {
-  try {
-    const profile = await prisma.profile.findUnique({ where: { id: 1 } });
-    if (!profile) return null;
-    return {
-      ...profile,
-      social: (profile.social as Record<string, string> | null) ?? {},
-    };
-  } catch {
-    return null;
-  }
-}
+export const getProfile = cache(async (): Promise<ProfileRow | null> => {
+  const profile = await prisma.profile.findUnique({ where: { id: 1 } });
+  if (!profile) return null;
+  return {
+    ...profile,
+    social: (profile.social as Record<string, string> | null) ?? {},
+  };
+});
 
 /**
  * Projets publiés, triés par ordre d'affichage puis date de publication.
  */
-export async function getPublishedProjects(
-  options: { limit?: number } = {}
-): Promise<ProjectRow[]> {
-  try {
+export const getPublishedProjects = cache(
+  async (options: { limit?: number } = {}): Promise<ProjectRow[]> => {
     const projects = await prisma.project.findMany({
       where: { status: "published" },
       orderBy: [{ sortOrder: "asc" }, { publishedAt: "desc" }],
       take: options.limit,
     });
     return projects as ProjectRow[];
-  } catch {
-    return [];
   }
-}
+);
 
 /**
  * Derniers projets publiés (pour l'accueil).
@@ -53,10 +47,10 @@ export async function getLatestProjects(limit = 3): Promise<ProjectRow[]> {
 /**
  * Un projet publié par slug, avec ses fichiers annexes.
  */
-export async function getPublishedProject(
-  slug: string
-): Promise<{ project: ProjectRow; files: ProjectFileWithUrl[] } | null> {
-  try {
+export const getPublishedProject = cache(
+  async (
+    slug: string
+  ): Promise<{ project: ProjectRow; files: ProjectFileWithUrl[] } | null> => {
     const project = await prisma.project.findFirst({
       where: { slug, status: "published" },
     });
@@ -75,18 +69,14 @@ export async function getPublishedProject(
         url: getPublicFileUrl(file.storagePath),
       })),
     };
-  } catch {
-    return null;
   }
-}
+);
 
 /**
  * Fichiers d'un projet (avec URL publique de téléchargement).
  */
-export async function getProjectFiles(
-  projectId: string
-): Promise<ProjectFileWithUrl[]> {
-  try {
+export const getProjectFiles = cache(
+  async (projectId: string): Promise<ProjectFileWithUrl[]> => {
     const files = await prisma.projectFile.findMany({
       where: { projectId },
       orderBy: { createdAt: "asc" },
@@ -96,18 +86,14 @@ export async function getProjectFiles(
       size: file.size == null ? null : Number(file.size),
       url: getPublicFileUrl(file.storagePath),
     }));
-  } catch {
-    return [];
   }
-}
+);
 
 /**
  * Images de la galerie d'un projet (avec URL publique).
  */
-export async function getProjectImages(
-  projectId: string
-): Promise<ProjectImageWithUrl[]> {
-  try {
+export const getProjectImages = cache(
+  async (projectId: string): Promise<ProjectImageWithUrl[]> => {
     const images = await prisma.projectImage.findMany({
       where: { projectId },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
@@ -116,10 +102,8 @@ export async function getProjectImages(
       ...image,
       url: getPublicFileUrl(image.storagePath),
     }));
-  } catch {
-    return [];
   }
-}
+);
 
 /**
  * Projets précédent / suivant (par ordre d'affichage), pour la navigation.
@@ -139,33 +123,25 @@ export async function getAdjacentProjects(
 /**
  * Slugs de tous les projets publiés (generateStaticParams, sitemap).
  */
-export async function getAllPublishedSlugs(): Promise<string[]> {
-  try {
-    const projects = await prisma.project.findMany({
-      where: { status: "published" },
-      select: { slug: true },
-    });
-    return projects.map((project) => project.slug);
-  } catch {
-    return [];
-  }
-}
+export const getAllPublishedSlugs = cache(async (): Promise<string[]> => {
+  const projects = await prisma.project.findMany({
+    where: { status: "published" },
+    select: { slug: true },
+  });
+  return projects.map((project) => project.slug);
+});
 
 /**
  * Tags distincts des projets publiés (filtres).
  */
-export async function getDistinctTags(): Promise<string[]> {
-  try {
-    const projects = await prisma.project.findMany({
-      where: { status: "published" },
-      select: { tags: true },
-    });
-    const set = new Set<string>();
-    for (const project of projects) {
-      for (const tag of project.tags) set.add(tag);
-    }
-    return [...set].sort((a, b) => a.localeCompare(b, "fr"));
-  } catch {
-    return [];
+export const getDistinctTags = cache(async (): Promise<string[]> => {
+  const projects = await prisma.project.findMany({
+    where: { status: "published" },
+    select: { tags: true },
+  });
+  const set = new Set<string>();
+  for (const project of projects) {
+    for (const tag of project.tags) set.add(tag);
   }
-}
+  return [...set].sort((a, b) => a.localeCompare(b, "fr"));
+});

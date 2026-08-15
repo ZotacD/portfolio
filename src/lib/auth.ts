@@ -20,6 +20,14 @@ function createAuth() {
       enabled: true,
       minPasswordLength: 8,
     },
+    session: {
+      // La session est lue depuis le cookie signé (pas de round-trip DB à
+      // chaque getSession), accélérant `requireAdmin`.
+      cookieCache: {
+        enabled: true,
+        maxAge: 5 * 60, // 5 minutes
+      },
+    },
     databaseHooks: {
       user: {
         create: {
