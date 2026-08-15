@@ -70,6 +70,12 @@ export default async function AdminHomePage() {
       description: "téléversés",
       icon: FileText,
     },
+    {
+      label: "Messages non lus",
+      value: unreadCount,
+      description: "à traiter",
+      icon: Mail,
+    },
   ];
 
   const checklist = [
@@ -131,7 +137,7 @@ export default async function AdminHomePage() {
         </Button>
       </header>
 
-      <div className="grid auto-rows-min gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid auto-rows-min gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {cards.map((card) => {
           const Icon = card.icon;
           return (
