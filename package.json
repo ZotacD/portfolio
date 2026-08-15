@@ -19,12 +19,13 @@
     "db:migrate:status:local": "dotenv -e .env.local -- prisma migrate status",
     "db:migrate:status:prod": "dotenv -e .env.prod -- prisma migrate status",
     
-    "db:studio": "prisma studio",
-    
+    "db:studio:local": "dotenv -e .env.local -- prisma studio",
+    "db:studio:prod": "dotenv -e .env.prod -- prisma studio",
+
     "db:reset:local": "supabase db reset --local && dotenv -e .env.local -- prisma migrate deploy",
     "db:reset:prod": "supabase db reset --linked && dotenv -e .env.prod -- prisma migrate deploy",
 
-    "db:admin:dev": "tsx scripts/create-admin.ts -- .env.local",
+    "db:admin:local": "tsx scripts/create-admin.ts -- .env.local",
     "db:admin:prod": "tsx scripts/create-admin.ts -- .env.prod",
 
     "db:seed:demo": "tsx scripts/seed.ts"
